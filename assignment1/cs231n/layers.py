@@ -1,3 +1,4 @@
+# from _typeshed import NoneType
 from builtins import range
 import numpy as np
 
@@ -28,7 +29,9 @@ def affine_forward(x, w, b):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N = x.shape[0]
+    x_reshaped = x.reshape(N, -1)
+    out = x_reshaped @ w + b
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -61,7 +64,9 @@ def affine_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dx = (dout @ w.T).reshape(x.shape)      # (N, M) @ (M, D) -> (N, D) -> X_reshaped (N, d_1, ..., d_k)
+    dw = x.reshape(x.shape[0], -1).T @ dout # (D, N) @ (N, M) -> (D, M)
+    db = dout.sum(0)                        # (M, )
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -87,7 +92,7 @@ def relu_forward(x):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    out = np.maximum(0, x)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -114,7 +119,7 @@ def relu_backward(dout, cache):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dx = dout * (x > 0)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -773,7 +778,16 @@ def svm_loss(x, y):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N = x.shape[0]
+    x_true = np.expand_dims(x[range(N), y], 1)
+    lossi = np.maximum(0, x - x_true + 1)           # (N, C)
+    loss = lossi.sum() / N - 1
+
+    dlossi = 1 / N
+    zero = np.zeros_like(lossi)
+    dy_hat = -(lossi != zero).sum(1) * dlossi
+    dx = (lossi != zero) * dlossi
+    dx[range(N), y] += 1 * dy_hat[range(N)]
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################
@@ -803,7 +817,18 @@ def softmax_loss(x, y):
     ###########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # Number of training samples
+    N = x.shape[0]
+    
+    # Compute the loss
+    y_norm = x - x.max(axis=1, keepdims=True)
+    y_exp = np.exp(y_norm)
+    y_pred = y_exp / y_exp.sum(axis=1, keepdims=True) # (N, C)
+    loss = -np.log(y_pred[range(N), y]).sum() / N
+
+    # Compute the gradient
+    y_pred[range(N), y] -= 1
+    dx = y_pred / N
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ###########################################################################

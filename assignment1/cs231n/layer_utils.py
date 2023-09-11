@@ -3,7 +3,7 @@ from .layers import *
 
 def affine_relu_forward(x, w, b):
     """
-    Convenience layer that perorms an affine transform followed by a ReLU
+    Convenience layer that performs an affine transform followed by a ReLU
 
     Inputs:
     - x: Input to the affine layer
@@ -27,4 +27,3 @@ def affine_relu_backward(dout, cache):
     da = relu_backward(dout, relu_cache)
     dx, dw, db = affine_backward(da, fc_cache)
     return dx, dw, db
-

@@ -37,6 +37,9 @@ def svm_loss_naive(W, X, y, reg):
             margin = scores[j] - correct_class_score + 1  # note delta = 1
             if margin > 0:
                 loss += margin
+                # Update the gradient
+                dW[:, j] += X[i]
+                dW[:, y[i]] -= X[i]
 
     # Right now the loss is a sum over all training examples, but we want it
     # to be an average instead so we divide by num_train.
@@ -55,7 +58,8 @@ def svm_loss_naive(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dW /= num_train
+    dW += 2 * reg * W
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -78,7 +82,17 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # - W: A numpy array of shape (D, C) containing weights.
+    # - X: A numpy array of shape (N, D) containing a minibatch of data.
+    # - y: A numpy array of shape (N,) containing training labels; y[i] = c means
+    #   that X[i] has label c, where 0 <= c < C.
+    # - reg: (float) regularization strength
+    
+    N = len(y)
+    scores = X @ W # (N, C)
+    y_hat = np.expand_dims(scores[range(N), y], axis=1) # (N, 1)
+    lossi = np.maximum(0, scores - y_hat + 1)           # (N, C)
+    loss = (lossi.sum() / N) - 1 + reg * (W**2).sum()   # (1,  )
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -93,7 +107,13 @@ def svm_loss_vectorized(W, X, y, reg):
     #############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    dW = 2 * reg * W
+    dlossi = 1 / N
+    zero = np.zeros_like(lossi)
+    dy_hat = -(lossi != zero).sum(1) * dlossi
+    dscores = (lossi != zero) * dlossi
+    dscores[range(N), y] += 1 * dy_hat[range(N)]
+    dW += X.T @ dscores
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
