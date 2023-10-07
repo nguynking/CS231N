@@ -148,7 +148,43 @@ class CaptioningRNN:
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        # 1. Compute the initial hidden state from the image features
+        h0 = features @ W_proj + b_proj # [N, H] <- [N, D] @ [D, H] + [H]
+
+        # 2. Transform the words in captions_in from indices to vectors
+        emb, cache_emb = word_embedding_forward(captions_in, W_embed) # [N, T, W]
+
+        # 3. Process the sequence of input word vectors and produce hidden states
+        h, cache_h = None, None
+        if self.cell_type == "rnn":
+            h, cache_h = rnn_forward(emb, h0, Wx, Wh, b) # [N, T, H]
+
+        elif self.cell_type == "lstm":
+            pass
+
+        # 4. Compute scores over the vocabulary at every timestep using the hidden states
+        scores, cache_scores = temporal_affine_forward(h, W_vocab, b_vocab) # [N, T, V]
+
+        # 5. Compute loss using captions_out, mask out <NULL>
+        loss, dscores = temporal_softmax_loss(scores, captions_out, mask, verbose=False)
+
+        ############################## Backward pass ##############################
+        dh, dW_vocab, db_vocab = temporal_affine_backward(dscores, cache_scores)
+        demb, dh0, dWx, dWh, db = rnn_backward(dh, cache_h)
+        dW_embed = word_embedding_backward(demb, cache_emb)
+        dW_proj = features.T @ dh0
+        db_proj = dh0.sum(axis=0)
+
+        grads.update({
+            "W_proj": dW_proj,
+            "b_proj": db_proj,
+            "W_embed": dW_embed,
+            "Wx": dWx,
+            "Wh": dWh,
+            "b": db,
+            "W_vocab": dW_vocab,
+            "b_vocab": db_vocab
+        })
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -216,7 +252,23 @@ class CaptioningRNN:
         ###########################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        # Get the initial hidden state h0
+        h = features @ W_proj + b_proj
+        idx = self._start
+
+        for t in range(max_length):
+            # 1. Get word embeddings
+            x = W_embed[idx]
+
+            # 2. Compute hidden state
+            h, _ = rnn_step_forward(x, h, Wx, Wh, b) # [N, H]
+
+            # 3. Get scores for all words in the vocab
+            scores = h @ W_vocab + b_vocab
+
+            # 4. Get index of the highest word's score and store in the appropriate slot
+            idx = scores.argmax(axis=1)
+            captions[:, t] = idx
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################

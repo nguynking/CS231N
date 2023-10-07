@@ -63,7 +63,16 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        F, (C, H, W) = num_filters, input_dim
+        
+        self.params.update({
+            "W1": weight_scale * np.random.randn(F, C, filter_size, filter_size),
+            "b1": np.zeros(num_filters),
+            "W2": weight_scale * np.random.randn(F * H * W // 4, hidden_dim),
+            "b2": np.zeros(hidden_dim),
+            "W3": weight_scale * np.random.randn(hidden_dim, num_classes),
+            "b3": np.zeros(num_classes),
+        })
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -102,7 +111,9 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        out, cache1 = conv_relu_pool_forward(X, W1, b1, conv_param, pool_param)
+        out, cache2 = affine_relu_forward(out, W2, b2)
+        scores, cache3 = affine_forward(out, W3, b3)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -125,7 +136,16 @@ class ThreeLayerConvNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss, dout = softmax_loss(scores, y)                                     # loss and dout
+        loss += 0.5 * self.reg * (np.sum(W1**2) + np.sum(W2**2) + np.sum(W3**2)) # regularized loss
+
+        dout, grads['W3'], grads['b3'] = affine_backward(dout, cache3)            # first backward pass
+        dout, grads['W2'], grads['b2'] = affine_relu_backward(dout, cache2)     # FC backward pass
+        dout, grads['W1'], grads['b1'] = conv_relu_pool_backward(dout, cache1)  # CONV backward pass
+
+        grads['W3'] += self.reg * W3 # L2 for W3
+        grads['W2'] += self.reg * W2 # L2 for W2
+        grads['W1'] += self.reg * W1 # L2 for W1
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################

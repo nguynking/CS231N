@@ -1,3 +1,4 @@
+from matplotlib.backend_bases import itertools
 import torch
 import random
 import torchvision.transforms as T
@@ -34,7 +35,20 @@ def compute_saliency_maps(X, y, model):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    # Forward pass
+    logits = model(X)
+
+    # You can compute the loss by using Negative Log Likelihood using gather as suggested in the notebook.
+    # loss = -logits.gather(1, y.view(-1, 1)).squeeze().log().sum()
+
+    # Using cross_entropy from Pytorch for stable computation
+    loss = torch.nn.functional.cross_entropy(logits, y)
+
+    # Backward pass
+    loss.backward()
+
+    # Compute saliency map: take the absolute values, find max value over the channel dim of gradients.
+    saliency = X.grad.abs().max(dim=1).values.squeeze()
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -76,7 +90,20 @@ def make_fooling_image(X, target_y, model):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    iters = 0
+    while True:
+        logits = model(X_fooling)
+
+        if logits.max(dim=1)[1] == target_y:
+            print(f"Number of iterations: {iters}")
+            break
+        
+        loss = logits[0, target_y]
+        loss.backward()
+
+        X_fooling.data += learning_rate * X_fooling.grad / X_fooling.grad.norm()
+        X_fooling.grad.zero_()
+        iters += 1
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -94,7 +121,11 @@ def class_visualization_update_step(img, model, target_y, l2_reg, learning_rate)
     ########################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    logits = model(img)
+    loss = logits[0, target_y] - l2_reg * (img**2).sum()
+    loss.backward()
+    img.data += learning_rate * img.grad / img.grad.norm()
+    img.grad.zero_()
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ########################################################################

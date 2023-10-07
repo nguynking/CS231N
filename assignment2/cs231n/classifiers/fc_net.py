@@ -1,5 +1,6 @@
 from builtins import range
 from builtins import object
+from re import I
 import numpy as np
 
 from ..layers import *
@@ -74,7 +75,16 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        for layer, (fan_in, fan_out) in enumerate(zip([input_dim, *hidden_dims], [*hidden_dims, num_classes])):
+
+            # initialize weight and bias
+            self.params.update({f"W{layer+1}": np.random.randn(fan_in, fan_out) * weight_scale,
+                                f"b{layer+1}": np.zeros(fan_out)})
+
+            # initialize gamma and beta for batch/layer norm
+            if layer < self.num_layers - 1 and self.normalization:
+                self.params.update({f"gamma{layer+1}": np.ones(fan_out),
+                                    f"beta{layer+1}" : np.zeros(fan_out)})
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -148,7 +158,26 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        scores = X.reshape(X.shape[0], -1)
+        cache = {}
+        for i in range(1, self.num_layers + 1):
+            keys = [f"W{i}", f"b{i}", f"gamma{i}", f"beta{i}"]
+            w, b, gamma, beta = (self.params.get(key, None) for key in keys)
+
+            # compute scores
+            if i == self.num_layers:
+                scores, cache[i] = affine_forward(scores, w, b)
+                break
+
+            # forward pass
+            if self.normalization == None:
+                scores, cache[i] = affine_relu_forward(scores, w, b)
+            elif self.normalization == "batchnorm":
+                scores, cache[i] = affine_batchnorm_relu_forward(scores, w, b, gamma, beta, self.bn_params[i-1],
+                                                                self.use_dropout, self.dropout_param)
+            else:
+                scores, cache[i] = affine_layernorm_relu_forward(scores, w, b, gamma, beta, self.bn_params[i-1],
+                                                                self.use_dropout, self.dropout_param)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -175,7 +204,38 @@ class FullyConnectedNet(object):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        loss, dscores = softmax_loss(scores, y)
+        loss += 0.5 * self.reg * np.sum([(self.params[f"W{i+1}"]**2).sum() for i in range(self.num_layers)])
+        
+        dout = dscores
+        for i in reversed(range(1, self.num_layers + 1)):
+            keys = [f"W{i}", f"b{i}", f"gamma{i}", f"beta{i}"]
+            w, b, gamma, beta = (self.params.get(key, None) for key in keys)
+
+            # compute gradient for the last affine
+            if i == self.num_layers:
+                dout, dw, db = affine_backward(dout, cache[i])
+                grads.update({f"W{i}": dw + self.reg * w,
+                              f"b{i}": db})
+                continue
+
+            # compute gradient for each affine_relu layer
+            if self.normalization == "batchnorm":
+                dout, dw, db, dgamma, dbeta = affine_batchnorm_relu_backward(dout, cache[i])
+                grads.update({f"W{i}": dw + self.reg * w,
+                            f"b{i}": db,
+                            f"gamma{i}": dgamma,
+                            f"beta{i}": dbeta})
+            elif self.normalization == "layernorm":
+                dout, dw, db, dgamma, dbeta = affine_layernorm_relu_backward(dout, cache[i])
+                grads.update({f"W{i}": dw + self.reg * w,
+                            f"b{i}": db,
+                            f"gamma{i}": dgamma,
+                            f"beta{i}": dbeta})
+            else:
+                dout, dw, db = affine_relu_backward(dout, cache[i])
+                grads.update({f"W{i}": dw + self.reg * w,
+                              f"b{i}": db})
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################

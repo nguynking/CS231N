@@ -38,7 +38,19 @@ class PositionalEncoding(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        # Naive solution using 2 for-loops
+        # for i in range(max_len):
+        #     for j in range(embed_dim):
+        #         if j % 2 == 0:
+        #             pe[:, i, j] = math.sin(i * 1e4**(-j / embed_dim))
+        #         else:
+        #             pe[:, i, j] = math.cos(i * 1e4**(-(j - 1)/embed_dim))
+
+        i = torch.arange(max_len).view(-1, 1)
+        pows = torch.pow(1e4, -torch.arange(0, embed_dim, 2) / embed_dim)
+
+        pe[0, :, 0::2] = torch.sin(i * pows)
+        pe[0, :, 1::2] = torch.cos(i * pows)
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -70,7 +82,7 @@ class PositionalEncoding(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        output = self.dropout(x + self.pe[:, :S])
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################
@@ -165,7 +177,21 @@ class MultiHeadAttention(nn.Module):
         ############################################################################
         # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-        pass
+        H = self.n_head
+        K = self.key(key).view(N, T, H, E//H).moveaxis(1, 2)     # [N, H, T, E//H]
+        Q = self.query(query).view(N, S, H, E//H).moveaxis(1, 2) # [N, H, S, E//H]
+        V = self.value(value).view(N, T, H, E//H).moveaxis(1, 2) # [N, H, T, E//H]
+
+        # [N, H, S, T] <- [N, H, S, E//H] @ [N, H, E//H, T]
+        P = Q @ K.transpose(-2, -1) / math.sqrt(self.head_dim)
+        if attn_mask is not None:
+            P.masked_fill_(attn_mask==0, float("-inf"))
+        
+        # [N, H, S, E//H] <- [N, H, S, T] @ [N, H, T, E//H]
+        Y = self.attn_drop(F.softmax(P, dim=-1)) @ V
+
+        # [N, S, E] <- [N, H, S, E//H]
+        output = self.proj(Y.moveaxis(1, 2).reshape(N, S, E))
 
         # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
         ############################################################################

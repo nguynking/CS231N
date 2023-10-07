@@ -1,6 +1,7 @@
 """This file defines layer types that are commonly used for recurrent neural networks.
 """
 
+from IPython.core.events import callback_prototype
 import numpy as np
 
 
@@ -73,7 +74,13 @@ def rnn_step_forward(x, prev_h, Wx, Wh, b):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x_proj = x @ Wx             # [N, H]
+    h_proj = prev_h @ Wh        # [N, H]
+    sum_h = x_proj + h_proj + b # [N, H]
+    next_h = np.tanh(sum_h)     # [N, H]
+    # next_h = np.tanh(x @ Wx + prev_h @ Wh + b)
+    cache = (x, Wx, prev_h, Wh, b, sum_h, h_proj, x_proj, next_h)
+    
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -105,7 +112,16 @@ def rnn_step_backward(dnext_h, cache):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x, Wx, prev_h, Wh, b, sum_h, h_proj, x_proj, next_h = cache
+
+    dsum_h = dnext_h * (1 - next_h**2)
+    db = dsum_h.sum(axis=0)
+    dx_proj = dsum_h
+    dh_proj = dsum_h
+    dprev_h = dh_proj @ Wh.T
+    dWh = prev_h.T @ dh_proj
+    dx = dx_proj @ Wx.T
+    dWx = x.T @ dx_proj
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -140,7 +156,15 @@ def rnn_forward(x, h0, Wx, Wh, b):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    N, T, D = x.shape
+    _, H = h0.shape
+    h = np.zeros((N, T, H))
+    cache = []
+    for t in range(T):
+        xt = x[:, t, :]
+        h0, cache_t = rnn_step_forward(xt, h0, Wx, Wh, b)
+        h[:, t] = h0
+        cache.append(cache_t)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -175,7 +199,18 @@ def rnn_backward(dh, cache):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    (N, T, H), (D, _) = dh.shape, cache[0][1].shape
+    dx = np.empty((N, T, D))
+    dh0 = np.zeros((N, H))
+    dWx = np.zeros((D, H))
+    dWh = np.zeros((H, H))
+    db = np.zeros(H)
+    for t in reversed(range(T)):
+        dxt, dh0, dWxt, dWht, dbt = rnn_step_backward(dh[:, t] + dh0, cache[t])
+        dWx += dWxt
+        dWh += dWht
+        db += dbt
+        dx[:, t] = dxt
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -208,7 +243,8 @@ def word_embedding_forward(x, W):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    out = W[x]
+    cache = (x, W)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################
@@ -242,7 +278,9 @@ def word_embedding_backward(dout, cache):
     ##############################################################################
     # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-    pass
+    x, W = cache
+    dW = np.zeros_like(W)
+    np.add.at(dW, x, dout)
 
     # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
     ##############################################################################

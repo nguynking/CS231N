@@ -1,3 +1,4 @@
+from numpy.core.fromnumeric import nonzero
 from .layers import *
 from .fast_layers import *
 
@@ -28,7 +29,65 @@ def affine_relu_backward(dout, cache):
 
 # *****START OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
-pass
+def affine_batchnorm_relu_forward(x, w, b, gamma, beta, bn_param, use_dropout, dropout_param):
+    """Convenience layer that performs an affine transform followed by a batchnorm and ReLU.
+
+    Inputs:
+    - x: Input to the affine layer
+    - w, b: Weights for the affine layer
+
+    Returns a tuple of:
+    - out: Output from the ReLU
+    - cache: Object to give to the backward pass
+    """
+    a, fc_cache = affine_forward(x, w, b)
+    bn, bn_cache = batchnorm_forward(a, gamma, beta, bn_param)
+    out, relu_cache = relu_forward(bn)
+    if use_dropout:
+        out, dropout_cache = dropout_forward(out, dropout_param)
+    cache = (fc_cache, bn_cache, relu_cache, dropout_cache if use_dropout else None)
+    return out, cache
+
+def affine_batchnorm_relu_backward(dout, cache):
+    """Backward pass for the affine-relu convenience layer.
+    """
+    fc_cache, bn_cache, relu_cache, dropout_cache = cache
+    if dropout_cache != None:
+        dout = dropout_backward(dout, dropout_cache)
+    dbn = relu_backward(dout, relu_cache)
+    da, dgamma, dbeta = batchnorm_backward_alt(dbn, bn_cache)
+    dx, dw, db = affine_backward(da, fc_cache)
+    return dx, dw, db, dgamma, dbeta
+
+def affine_layernorm_relu_forward(x, w, b, gamma, beta, ln_param, use_dropout, dropout_param):
+    """Convenience layer that performs an affine transform followed by a batchnorm and ReLU.
+
+    Inputs:
+    - x: Input to the affine layer
+    - w, b: Weights for the affine layer
+
+    Returns a tuple of:
+    - out: Output from the ReLU
+    - cache: Object to give to the backward pass
+    """
+    a, fc_cache = affine_forward(x, w, b)
+    ln, ln_cache = layernorm_forward(a, gamma, beta, ln_param)
+    out, relu_cache = relu_forward(ln)
+    if use_dropout:
+        out, dropout_cache = dropout_forward(out, dropout_param)
+    cache = (fc_cache, ln_cache, relu_cache, dropout_cache if use_dropout else None)
+    return out, cache
+
+def affine_layernorm_relu_backward(dout, cache):
+    """Backward pass for the affine-relu convenience layer.
+    """
+    fc_cache, ln_cache, relu_cache, dropout_cache = cache
+    if dropout_cache != None:
+        dout = dropout_backward(dout, dropout_cache)
+    dln = relu_backward(dout, relu_cache)
+    da, dgamma, dbeta = layernorm_backward(dln, ln_cache)
+    dx, dw, db = affine_backward(da, fc_cache)
+    return dx, dw, db, dgamma, dbeta
 
 # *****END OF YOUR CODE (DO NOT DELETE/MODIFY THIS LINE)*****
 
@@ -102,9 +161,9 @@ def conv_relu_pool_forward(x, w, b, conv_param, pool_param):
     - out: Output from the pooling layer
     - cache: Object to give to the backward pass
     """
-    a, conv_cache = conv_forward_fast(x, w, b, conv_param)
+    a, conv_cache = conv_forward_naive(x, w, b, conv_param)
     s, relu_cache = relu_forward(a)
-    out, pool_cache = max_pool_forward_fast(s, pool_param)
+    out, pool_cache = max_pool_forward_naive(s, pool_param)
     cache = (conv_cache, relu_cache, pool_cache)
     return out, cache
 
@@ -113,7 +172,7 @@ def conv_relu_pool_backward(dout, cache):
     """Backward pass for the conv-relu-pool convenience layer.
     """
     conv_cache, relu_cache, pool_cache = cache
-    ds = max_pool_backward_fast(dout, pool_cache)
+    ds = max_pool_backward_naive(dout, pool_cache)
     da = relu_backward(ds, relu_cache)
-    dx, dw, db = conv_backward_fast(da, conv_cache)
+    dx, dw, db = conv_backward_naive(da, conv_cache)
     return dx, dw, db
