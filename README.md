@@ -13,15 +13,7 @@ These are my solutions for the **CS231N** course assignments offered by _Stanfor
 * [**Lecture videos (2016)**](https://youtube.com/playlist?list=PLkt2uSq6rBVctENoVBg1TpCC7OQi31AlC&si=zzTJkoGBTSrT_L1U) or [**2017**](https://youtube.com/playlist?list=PLC1qU-LWwrF64f4QKQT-Vg5Wr4qEE1Zxk&si=CkZbxLfFRDfvPJUA) version.
 
 ## Requirements
-For **conda** users, the instructions on how to set-up the environment are given in the handouts. For `pip` users, I've gathered all the requirements in one [file](requirements.txt). Please set up the virtual environment and install the dependencies (for _linux_ users):
-
-```shell
-$ python -m venv venv
-$ source venv/bin/activate
-$ pip install -r requirements.txt
-```
-
-You can install everything with **conda** too (see [this](https://stackoverflow.com/questions/51042589/conda-version-pip-install-r-requirements-txt-target-lib)). For code that requires **Azure** _Virtual Machines_, I was able to run everything successfully on **Google Colab** with a free account.
+These assignments are suggested using **Google Colab** if you don't have any GPUs. All instructions for setting up a virtual environment are on the [**Course Notes**](https://cs231n.github.io/setup-instructions/) page.
 
 > Note: Python 3.8 or newer should be used
 
